@@ -1,5 +1,5 @@
-# Template-Hackathon-pack-m1-v1
-Project Template for quick start with the following tech stack: Vite ReactJS, Tailwindcss, ShadCN and ExpressJS with PostgreSQL database set up
+# Energizer-Hackathon-2025
+Tech Stack: Vite ReactJS, Tailwindcss, ShadCN and ExpressJS with PostgreSQL database set up
 
 # How to run
 ## client side:<br>
