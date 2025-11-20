@@ -13,8 +13,13 @@ const app = express();
 app.use(express.json());
 
 const CORS_OPTIONS = {
-  origin: [process.env.FRONT_END_URL || 'http://localhost:3000'],
+  origin: [
+    process.env.FRONT_END_URL || 'http://localhost:5173',
+    'http://localhost:3000', // Keep this for other configs
+    'http://localhost:5173', // Vite default port
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
 };
 
 app.use(cors(CORS_OPTIONS));
