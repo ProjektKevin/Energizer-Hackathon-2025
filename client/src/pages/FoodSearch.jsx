@@ -116,8 +116,17 @@ const FoodSearch = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">Find Your Food</h1>
-      
+ <div className="flex justify-between items-start">
+    {/* Left side - Greetings */}
+      <h1 className="text-xl font-bold">
+        Find Your Food
+      </h1>
+    
+    {/* Right side - Logo */}
+    <div className="flex items-center gap-1">
+      <span className="text-2xl">🍜</span>
+    </div>
+  </div>
       {/* Allergy Warning Banner */}
       {allergies.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-center gap-2">

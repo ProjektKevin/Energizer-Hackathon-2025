@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getProfile, updateProfile, addAllergy, deleteAllergy } from '../api/profileApi';
-import { User, ChevronDown, X, Plus, Save } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { User, ChevronDown, X, Plus, Save, LogOut } from 'lucide-react';
 
 const ProfilePage = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -100,7 +105,7 @@ const ProfilePage = () => {
       setSaving(true);
       await updateProfile(profile);
       alert('Profile saved successfully!');
-      fetchProfile(); // Refresh to get updated BMI
+      fetchProfile();
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Failed to save profile');
@@ -109,7 +114,13 @@ const ProfilePage = () => {
     }
   };
 
-  // Calculate BMI on the fly
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to logout?')) {
+      logout();
+      navigate('/login');
+    }
+  };
+
   const calculateBMI = () => {
     if (profile?.user?.height_cm && profile?.user?.weight_kg) {
       const heightM = profile.user.height_cm / 100;
@@ -133,11 +144,23 @@ const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-b-3xl">
-        <h1 className="text-xl font-bold">Profile</h1>
-        <p className="text-blue-100 text-sm">Manage your health information</p>
-      </div>
-
+       <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 mb-4">
+  <div className="flex justify-between items-start">
+    {/* Left side - Greetings */}
+    <div>
+      <h1 className="text-xl font-bold">
+        Profile
+      </h1>
+      <p className="text-blue-100 text-xs mt-1">Manage your health information</p>
+    </div>
+    
+    {/* Right side - Logo */}
+    <div className="flex items-center gap-1">
+      <p className="text-blue-100 text-xs">GlucoSG</p>
+      <span className="text-2xl">🍜</span>
+    </div>
+  </div>
+</div>
       <div className="p-4 space-y-4">
         {/* Personal Information */}
         <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -340,56 +363,54 @@ const ProfilePage = () => {
         </div>
 
         {/* Dietary Preferences - Allergies Only */}
-<div className="bg-white rounded-xl p-4 shadow-sm">
-  <div className="flex items-center gap-2 mb-4">
-    <span className="text-xl">🍽️</span>
-    <h2 className="font-semibold text-gray-800">Dietary Preferences</h2>
-  </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">🍽️</span>
+            <h2 className="font-semibold text-gray-800">Dietary Preferences</h2>
+          </div>
 
-  {/* Allergies Selection */}
-  <div>
-    <label className="text-sm text-gray-600">Allergies & Restrictions</label>
-    <p className="text-xs text-gray-400 mb-2">Select all that apply</p>
-    
-    <div className="flex flex-wrap gap-2">
-      {['Shellfish', 'Seafood', 'Nuts', 'Dairy', 'Eggs', 'Gluten', 'Soy'].map(allergy => {
-        const isSelected = allergies.some(a => a.allergy_name.toLowerCase() === allergy.toLowerCase());
-        return (
-          <button
-            key={allergy}
-            onClick={async () => {
-              if (isSelected) {
-                // Remove allergy
-                const existing = allergies.find(a => a.allergy_name.toLowerCase() === allergy.toLowerCase());
-                if (existing) {
-                  await handleDeleteAllergy(existing.allergy_id);
-                }
-              } else {
-                // Add allergy
-                try {
-                  const added = await addAllergy(allergy);
-                  setProfile(prev => ({
-                    ...prev,
-                    allergies: [...prev.allergies, added]
-                  }));
-                } catch (error) {
-                  console.error('Error adding allergy:', error);
-                }
-              }
-            }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              isSelected
-                ? 'bg-purple-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {isSelected && '✓ '}{allergy}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-</div>
+          {/* Allergies Selection */}
+          <div>
+            <label className="text-sm text-gray-600">Allergies & Restrictions</label>
+            <p className="text-xs text-gray-400 mb-2">Select all that apply</p>
+            
+            <div className="flex flex-wrap gap-2">
+              {['Shellfish', 'Seafood', 'Nuts', 'Dairy', 'Eggs', 'Gluten', 'Soy'].map(allergy => {
+                const isSelected = allergies.some(a => a.allergy_name.toLowerCase() === allergy.toLowerCase());
+                return (
+                  <button
+                    key={allergy}
+                    onClick={async () => {
+                      if (isSelected) {
+                        const existing = allergies.find(a => a.allergy_name.toLowerCase() === allergy.toLowerCase());
+                        if (existing) {
+                          await handleDeleteAllergy(existing.allergy_id);
+                        }
+                      } else {
+                        try {
+                          const added = await addAllergy(allergy);
+                          setProfile(prev => ({
+                            ...prev,
+                            allergies: [...prev.allergies, added]
+                          }));
+                        } catch (error) {
+                          console.error('Error adding allergy:', error);
+                        }
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {isSelected && '✓ '}{allergy}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         {/* Save Button */}
         <button
@@ -399,6 +420,15 @@ const ProfilePage = () => {
         >
           <Save className="w-5 h-5" />
           {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+
+        {/* Logout Button at Bottom */}
+        <button
+          onClick={handleLogout}
+          className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-red-100 transition-colors border border-red-200"
+        >
+          <LogOut className="w-5 h-5" />
+          Logout
         </button>
       </div>
     </div>

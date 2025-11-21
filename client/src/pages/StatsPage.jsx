@@ -119,7 +119,7 @@ const hasHighCholesterol = conditions.includes('High Cholesterol'); // Add this
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-b-3xl">
+      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 ">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">📊</span>
           <h1 className="text-xl font-bold">Nutrition Stats</h1>

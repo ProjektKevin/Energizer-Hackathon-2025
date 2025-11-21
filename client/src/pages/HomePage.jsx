@@ -123,19 +123,25 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-b-3xl">
-        <p className="text-blue-100 text-sm">GlucoSG</p>
-        <h1 className="text-2xl font-bold mt-1">{getGreeting()}, {profile.user.name?.split(' ')[0] || 'there'}!</h1>
-        <p className="text-blue-100 text-sm mt-1">Let's keep your glucose in check today</p>
-      </div>
-
-      
+    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 mb-4">
+  <div className="flex justify-between items-start">
+    {/* Left side - Greetings */}
+    <div>
+      <h1 className="text-xl font-bold">
+        {getGreeting()}, {profile.user.name?.split(' ')[0] || 'there'}!
+      </h1>
+      <p className="text-blue-100 text-xs mt-1">Let's keep your glucose in check today</p>
+    </div>
+    
+    {/* Right side - Logo */}
+    <div className="flex items-center gap-1">
+      <p className="text-blue-100 text-xs">GlucoSG</p>
+      <span className="text-2xl">🍜</span>
+    </div>
+  </div>
+</div>
      {/* Stats Cards */}
 <div>
-  <div className="mb-2">
-    <h2 className="font-semibold text-gray-800">Today's Progress</h2>
-    <p className="text-xs text-gray-800">Based on what you've eaten so far</p>
-  </div>
  <div className="grid grid-cols-3 gap-3">
           {/* Calories Card */}
           <div className="bg-white rounded-xl p-3 shadow-sm">
