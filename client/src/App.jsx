@@ -7,6 +7,7 @@ import FoodSearch from './pages/FoodSearch';  // Add this
 import NavBar from './components/navbar';
 import FoodDetail from './pages/FoodDetail'; 
 import StatsPage from './pages/StatsPage';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -19,6 +20,8 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />
         <Route path="food/:id" element={<FoodDetail />} />
         <Route path="stats" element={<StatsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+
       </Routes>
       <NavBar />
     </BrowserRouter>

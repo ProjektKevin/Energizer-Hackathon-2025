@@ -11,6 +11,12 @@ export const getFoodById = async (id) => {
   if (!response.ok) throw new Error('Failed to fetch food');
   return response.json();
 };
+export const getUserAllergies = async () => {
+  const response = await fetch(`${API_BASE}/profile`);
+  if (!response.ok) throw new Error('Failed to fetch profile');
+  const data = await response.json();
+  return data.allergies;
+};
 
 export const logMeal = async (foodId, quantity, mealType) => {
   const response = await fetch(`${API_URL}/meals`, {
