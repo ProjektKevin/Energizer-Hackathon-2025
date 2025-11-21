@@ -27,7 +27,7 @@ app.use(cors(CORS_OPTIONS));
 app.use('/api', mainRoutes);
 
 // Test the database connection when the server starts
-testDBConnection(pool);
+// testDBConnection(pool);
 
 
 export default app;

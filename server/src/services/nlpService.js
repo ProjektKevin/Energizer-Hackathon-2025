@@ -21,6 +21,10 @@ const detectFoods = (transcript, foodList) => {
     }
   }
 
+  // // Remove duplicates (case-insensitive)
+  // const unique = [...new Set(detected.map(f => f.toLowerCase()))];
+  
+  // return unique;
   return detected;
 }
 
