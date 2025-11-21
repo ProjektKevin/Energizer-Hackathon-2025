@@ -11,3 +11,35 @@ export const getFoodById = async (id) => {
   if (!response.ok) throw new Error('Failed to fetch food');
   return response.json();
 };
+
+export const logMeal = async (foodId, quantity, mealType) => {
+  const response = await fetch(`${API_URL}/meals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      food_id: foodId,
+      quantity: quantity,
+      meal_type: mealType,
+    }),
+  });
+  
+  if (!response.ok) throw new Error('Failed to log meal');
+  return response.json();
+};
+
+export const getDailyStats = async (date) => {
+  const url = date 
+    ? `${API_URL}/stats/daily?date=${date}` 
+    : `${API_URL}/stats/daily`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Failed to fetch stats');
+  return response.json();
+};
+
+export const deleteMealFood = async (mealFoodId) => {
+  const response = await fetch(`${API_URL}/meals/food/${mealFoodId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete meal food');
+  return response.json();
+};
