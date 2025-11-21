@@ -1,13 +1,8 @@
 import express from 'express';
+import foodRoutes from './foodRoutes.js';
 
-import sampleRoutes from './sampleRoute.js';
-import aiRoutes from './aiRoute.js';
-
-// Set up router
 const router = express.Router();
 
-router.use('/sample', sampleRoutes);
-router.use('/ai', aiRoutes);
+router.use('/foods', foodRoutes);
 
-// export the router
 export default router;
