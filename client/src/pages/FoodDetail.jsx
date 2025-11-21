@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getFoodById, logMeal } from '../api/foodApi';
-import { MapPin } from 'lucide-react';
+import { getProfile } from '../api/profileApi';
+import { MapPin, AlertTriangle } from 'lucide-react';
 
 const FoodDetail = () => {
   const { id } = useParams();
@@ -12,20 +13,58 @@ const FoodDetail = () => {
   const [mealType, setMealType] = useState('Lunch');
   const [logging, setLogging] = useState(false);
   const [logSuccess, setLogSuccess] = useState(false);
+  const [allergies, setAllergies] = useState([]);
+  const [detectedAllergen, setDetectedAllergen] = useState(null);
+
+  // Allergen detection logic (same as FoodSearch)
+  const checkAllergen = (food, userAllergies) => {
+    const foodName = food.food_name?.toLowerCase() || '';
+    const category = food.category?.toLowerCase() || '';
+    
+    const allergenKeywords = {
+      'shellfish': ['prawn', 'shrimp', 'crab', 'lobster', 'clam', 'mussel', 'oyster', 'squid', 'shellfish'],
+      'seafood': ['fish', 'salmon', 'tuna', 'cod', 'prawn', 'shrimp', 'crab', 'seafood', 'squid'],
+      'nuts': ['peanut', 'almond', 'cashew', 'walnut', 'pistachio', 'nut'],
+      'dairy': ['milk', 'cheese', 'yogurt', 'cream', 'butter', 'dairy'],
+      'eggs': ['egg', 'omelette', 'scrambled'],
+      'gluten': ['bread', 'wheat', 'pasta', 'noodle', 'flour', 'baguette'],
+      'soy': ['soy', 'tofu', 'tempeh', 'edamame']
+    };
+
+    for (const allergy of userAllergies) {
+      const keywords = allergenKeywords[allergy] || [allergy];
+      for (const keyword of keywords) {
+        if (foodName.includes(keyword) || category.includes(keyword)) {
+          return allergy;
+        }
+      }
+    }
+    return null;
+  };
 
   useEffect(() => {
-    const fetchFood = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getFoodById(id);
-        console.log('Food data:', data);
-        setFood(data);
+        const [foodData, profileData] = await Promise.all([
+          getFoodById(id),
+          getProfile()
+        ]);
+        console.log('Food data:', foodData);
+        setFood(foodData);
+        
+        const userAllergies = profileData.allergies.map(a => a.allergy_name.toLowerCase());
+        setAllergies(userAllergies);
+        
+        // Check if this food contains allergens
+        const allergen = checkAllergen(foodData, userAllergies);
+        setDetectedAllergen(allergen);
       } catch (error) {
-        console.error('Error fetching food:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchFood();
+    fetchData();
   }, [id]);
 
   // Calculate adjusted nutrition based on portion
@@ -62,78 +101,73 @@ const FoodDetail = () => {
   ];
 
   // Calculate health score (1-10)
-// Calculate health score (1-10)
-const calculateHealthScore = (food, portion) => {
-  let score = 5; // Start neutral, not at 10
-  
-  const calories = food.calories * portion;
-  const gl = calculateGlucoseImpact(food, portion);
-  const protein = food.protein_g * portion;
-  const fiber = (food.fiber_g || 0) * portion;
-  const fat = food.fat_g * portion;
-  const carbs = food.carbs_g * portion;
-  const category = food.category?.toLowerCase() || '';
+  const calculateHealthScore = (food, portion) => {
+    let score = 5;
+    
+    const calories = food.calories * portion;
+    const gl = calculateGlucoseImpact(food, portion);
+    const protein = food.protein_g * portion;
+    const fiber = (food.fiber_g || 0) * portion;
+    const fat = food.fat_g * portion;
+    const carbs = food.carbs_g * portion;
+    const category = food.category?.toLowerCase() || '';
 
-  // Category base adjustments
-  if (category.includes('vegetable')) score += 2;
-  else if (category.includes('protein') || category.includes('fish')) score += 1.5;
-  else if (category.includes('fruit')) score += 1;
-  else if (category.includes('dessert') || category.includes('sweet')) score -= 2;
-  else if (category.includes('beverage')) score -= 1;
-  else if (category.includes('grain')) score += 0.5;
+    if (category.includes('vegetable')) score += 2;
+    else if (category.includes('protein') || category.includes('fish')) score += 1.5;
+    else if (category.includes('fruit')) score += 1;
+    else if (category.includes('dessert') || category.includes('sweet')) score -= 2;
+    else if (category.includes('beverage')) score -= 1;
+    else if (category.includes('grain')) score += 0.5;
 
-  // GL impact (more aggressive)
-  if (gl >= 20) score -= 2.5;
-  else if (gl >= 10) score -= 1.5;
-  else if (gl < 5) score += 1;
+    if (gl >= 20) score -= 2.5;
+    else if (gl >= 10) score -= 1.5;
+    else if (gl < 5) score += 1;
 
-  // Calorie assessment
-  if (calories > 600) score -= 2;
-  else if (calories > 400) score -= 1.5;
-  else if (calories > 250) score -= 0.5;
-  else if (calories < 100) score += 0.5;
+    if (calories > 600) score -= 2;
+    else if (calories > 400) score -= 1.5;
+    else if (calories > 250) score -= 0.5;
+    else if (calories < 100) score += 0.5;
 
-  // Protein bonus (good for satiety)
-  if (protein >= 25) score += 1.5;
-  else if (protein >= 15) score += 1;
-  else if (protein >= 8) score += 0.5;
+    if (protein >= 25) score += 1.5;
+    else if (protein >= 15) score += 1;
+    else if (protein >= 8) score += 0.5;
 
-  // Fiber bonus
-  if (fiber >= 6) score += 1.5;
-  else if (fiber >= 3) score += 1;
-  else if (fiber >= 1) score += 0.5;
+    if (fiber >= 6) score += 1.5;
+    else if (fiber >= 3) score += 1;
+    else if (fiber >= 1) score += 0.5;
 
-  // Fat penalty (high fat)
-  if (fat > 25) score -= 2;
-  else if (fat > 15) score -= 1;
-  else if (fat > 10) score -= 0.5;
+    if (fat > 25) score -= 2;
+    else if (fat > 15) score -= 1;
+    else if (fat > 10) score -= 0.5;
 
-  // High carb + low fiber = refined carbs penalty
-  if (carbs > 40 && fiber < 2) score -= 1.5;
-  else if (carbs > 25 && fiber < 1) score -= 1;
+    if (carbs > 40 && fiber < 2) score -= 1.5;
+    else if (carbs > 25 && fiber < 1) score -= 1;
 
-  // Protein to carb ratio bonus (good for blood sugar)
-  if (protein > 0 && carbs > 0) {
-    const ratio = protein / carbs;
-    if (ratio > 1) score += 1;
-    else if (ratio > 0.5) score += 0.5;
-  }
+    if (protein > 0 && carbs > 0) {
+      const ratio = protein / carbs;
+      if (ratio > 1) score += 1;
+      else if (ratio > 0.5) score += 0.5;
+    }
 
-  // Clamp between 1-10
-  return Math.max(1, Math.min(10, Math.round(score)));
-};
+    return Math.max(1, Math.min(10, Math.round(score)));
+  };
 
-const getScoreColor = (score) => {
-  if (score >= 7) return { bg: 'bg-green-50', text: 'text-green-700', ring: 'stroke-green-500', label: 'Healthy Choice', emoji: '🥗' };
-  if (score >= 4) return { bg: 'bg-orange-50', text: 'text-orange-700', ring: 'stroke-orange-500', label: 'Moderate', emoji: '⚖️' };
-  return { bg: 'bg-red-50', text: 'text-red-700', ring: 'stroke-red-500', label: 'Limit This', emoji: '⚠️' };
-};
+  const getScoreColor = (score) => {
+    if (score >= 7) return { bg: 'bg-green-50', text: 'text-green-700', ring: 'stroke-green-500', label: 'Healthy Choice', emoji: '🥗' };
+    if (score >= 4) return { bg: 'bg-orange-50', text: 'text-orange-700', ring: 'stroke-orange-500', label: 'Moderate', emoji: '⚖️' };
+    return { bg: 'bg-red-50', text: 'text-red-700', ring: 'stroke-red-500', label: 'Limit This', emoji: '⚠️' };
+  };
 
-const healthScore = food ? calculateHealthScore(food, portion) : 0;
-const scoreStyle = getScoreColor(healthScore);
-
+  const healthScore = food ? calculateHealthScore(food, portion) : 0;
+  const scoreStyle = getScoreColor(healthScore);
 
   const handleLogMeal = async () => {
+    // Block logging if allergen detected
+    if (detectedAllergen) {
+      alert(`Cannot log this meal - it contains ${detectedAllergen} which is in your allergy list.`);
+      return;
+    }
+    
     try {
       setLogging(true);
       await logMeal(food.food_id, portion, mealType);
@@ -165,11 +199,37 @@ const scoreStyle = getScoreColor(healthScore);
         ← Back to search
       </button>
 
+      {/* Allergy Warning Banner */}
+      {detectedAllergen && (
+        <div className="bg-red-100 border-2 border-red-400 rounded-xl p-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-500 rounded-full p-2">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-red-800 text-lg">Allergy Warning!</p>
+              <p className="text-red-700">
+                This food may contain <strong>{detectedAllergen}</strong> which is in your allergy list.
+              </p>
+              <p className="text-red-600 text-sm mt-1">Logging is disabled for your safety.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Food Header */}
-      <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+      <div className={`bg-white rounded-xl p-4 shadow-sm mb-4 ${detectedAllergen ? 'border-2 border-red-300' : ''}`}>
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">{food.food_name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-800">{food.food_name}</h1>
+              {detectedAllergen && (
+                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  {detectedAllergen}
+                </span>
+              )}
+            </div>
             <p className="text-blue-500 text-sm">{food.category}</p>
             <button 
               onClick={openGoogleMaps}
@@ -184,55 +244,50 @@ const scoreStyle = getScoreColor(healthScore);
       </div>
 
       {/* Health Score - Circular Gauge Design */}
-<div className={`rounded-xl p-4 mb-4 ${scoreStyle.bg}`}>
-  <p className={`text-sm font-medium mb-3 ${scoreStyle.text}`}>HEALTH SCORE</p>
-  <div className="flex items-center gap-4">
-    {/* Circular Gauge */}
-    <div className="relative w-24 h-24">
-      <svg className="w-24 h-24 transform -rotate-90">
-        {/* Background circle */}
-        <circle
-          cx="48"
-          cy="48"
-          r="40"
-          stroke="currentColor"
-          strokeWidth="8"
-          fill="none"
-          className="text-gray-200"
-        />
-        {/* Progress circle */}
-        <circle
-          cx="48"
-          cy="48"
-          r="40"
-          strokeWidth="8"
-          fill="none"
-          strokeLinecap="round"
-          className={scoreStyle.ring}
-          strokeDasharray={`${(healthScore / 10) * 251.2} 251.2`}
-        />
-      </svg>
-      {/* Score in center */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={`text-2xl font-bold ${scoreStyle.text}`}>{healthScore}</span>
-        <span className="text-xs text-gray-500">/10</span>
+      <div className={`rounded-xl p-4 mb-4 ${scoreStyle.bg}`}>
+        <p className={`text-sm font-medium mb-3 ${scoreStyle.text}`}>HEALTH SCORE</p>
+        <div className="flex items-center gap-4">
+          <div className="relative w-24 h-24">
+            <svg className="w-24 h-24 transform -rotate-90">
+              <circle
+                cx="48"
+                cy="48"
+                r="40"
+                stroke="currentColor"
+                strokeWidth="8"
+                fill="none"
+                className="text-gray-200"
+              />
+              <circle
+                cx="48"
+                cy="48"
+                r="40"
+                strokeWidth="8"
+                fill="none"
+                strokeLinecap="round"
+                className={scoreStyle.ring}
+                strokeDasharray={`${(healthScore / 10) * 251.2} 251.2`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className={`text-2xl font-bold ${scoreStyle.text}`}>{healthScore}</span>
+              <span className="text-xs text-gray-500">/10</span>
+            </div>
+          </div>
+          
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl">{scoreStyle.emoji}</span>
+              <span className={`font-semibold ${scoreStyle.text}`}>{scoreStyle.label}</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              {healthScore >= 7 && "Great nutritional balance!"}
+              {healthScore >= 4 && healthScore < 7 && "Okay in moderation."}
+              {healthScore < 4 && "Consider healthier alternatives."}
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
-    
-    {/* Score details */}
-    <div className="flex-1">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-2xl">{scoreStyle.emoji}</span>
-        <span className={`font-semibold ${scoreStyle.text}`}>{scoreStyle.label}</span>
-      </div>
-      <p className="text-xs text-gray-500">
-        {healthScore >= 7 && "Great nutritional balance!"}
-        {healthScore >= 4 && healthScore < 7 && "Okay in moderation."}
-        {healthScore < 4 && "Consider healthier alternatives."}
-      </p>
-    </div>
-  </div>
-</div>
 
       {/* Glucose Impact */}
       <div className={`rounded-xl p-4 mb-4 ${
@@ -305,7 +360,6 @@ const scoreStyle = getScoreColor(healthScore);
           ))}
         </div>
 
-        {/* Fine-tune slider */}
         <div className="mt-4">
           <p className="text-sm text-gray-600 mb-2">Fine Tune: {portion.toFixed(1)}x</p>
           <input
@@ -344,14 +398,22 @@ const scoreStyle = getScoreColor(healthScore);
       <div className="fixed bottom-20 left-4 right-4 space-y-2">
         <button 
           onClick={handleLogMeal}
-          disabled={logging}
+          disabled={logging || detectedAllergen}
           className={`w-full py-4 rounded-xl font-medium transition-colors ${
-            logSuccess 
-              ? 'bg-green-500 text-white' 
-              : 'bg-blue-500 text-white'
+            detectedAllergen
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : logSuccess 
+                ? 'bg-green-500 text-white' 
+                : 'bg-blue-500 text-white'
           } ${logging ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          {logging ? 'Logging...' : logSuccess ? '✓ Logged!' : '+ Log This Meal'}
+          {detectedAllergen 
+            ? `⚠️ Cannot Log - Contains ${detectedAllergen}`
+            : logging 
+              ? 'Logging...' 
+              : logSuccess 
+                ? '✓ Logged!' 
+                : '+ Log This Meal'}
         </button>
         <button 
           onClick={() => navigate('/search')}

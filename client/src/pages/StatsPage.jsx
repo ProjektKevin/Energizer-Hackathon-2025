@@ -91,7 +91,8 @@ const caloriesRemaining = goals.calories - totals.calories;
 const hasDiabetes = conditions.includes('Diabetes');
 const hasOverweight = conditions.includes('Overweight');  // Add this line
 const sugarPercentage = (totals.sugar / goals.sugar) * 100;
-
+const hasHypertension = conditions.includes('Hypertension');       // Add this
+const hasHighCholesterol = conditions.includes('High Cholesterol'); // Add this
   // Group meals by type
   const mealsByType = {
     Breakfast: [],
@@ -101,7 +102,7 @@ const sugarPercentage = (totals.sugar / goals.sugar) * 100;
   };
   
   meals.forEach(meal => {
-  const type = meal.meal_type;
+  const type = meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1);
   if (mealsByType[type]) {
     meal.meal_foods.forEach(mf => {
       if (mf.foods) {
@@ -118,7 +119,7 @@ const sugarPercentage = (totals.sugar / goals.sugar) * 100;
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-b-3xl">
+      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 ">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-2xl">📊</span>
           <h1 className="text-xl font-bold">Nutrition Stats</h1>
@@ -259,7 +260,7 @@ const sugarPercentage = (totals.sugar / goals.sugar) * 100;
           </div>
         </div>
 
-        {/* Condition-Based Alerts */}
+      {/* Condition-Based Alerts */}
 {conditions.length > 0 && (
   <div className="space-y-3 mb-4">
     
@@ -298,6 +299,48 @@ const sugarPercentage = (totals.sugar / goals.sugar) * 100;
               <li>✓ Pair carbs with protein to slow absorption</li>
             </ul>
             <p className="text-sm text-orange-500 mt-2">✗ Avoid: White rice, bread, noodles</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Hypertension Alert - Sodium Warning */}
+    {hasHypertension && (totals.sodium / goals.sodium) * 100 >= 70 && (
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">🧂</span>
+          <div>
+            <h3 className="font-semibold text-blue-700">Sodium Alert - Blood Pressure Control</h3>
+            <p className="text-sm text-blue-600 mt-1">
+              Sodium intake at <strong>{Math.round((totals.sodium / goals.sodium) * 100)}%</strong>. High sodium can raise blood pressure.
+            </p>
+            <ul className="text-sm text-gray-600 mt-2 space-y-1">
+              <li>✓ Choose fresh foods over processed</li>
+              <li>✓ Ask for less salt when eating out</li>
+              <li>✓ Use herbs and spices for flavor</li>
+            </ul>
+            <p className="text-sm text-blue-500 mt-2">✗ Avoid: Soy sauce, processed meats, instant noodles</p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* High Cholesterol Alert - Fat Warning */}
+    {hasHighCholesterol && (totals.fat / goals.fat) * 100 >= 75 && (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">🫀</span>
+          <div>
+            <h3 className="font-semibold text-amber-700">Fat Alert - Cholesterol Management</h3>
+            <p className="text-sm text-amber-600 mt-1">
+              Fat intake at <strong>{Math.round((totals.fat / goals.fat) * 100)}%</strong>. Watch saturated fat for heart health.
+            </p>
+            <ul className="text-sm text-gray-600 mt-2 space-y-1">
+              <li>✓ Choose lean proteins, fish, tofu</li>
+              <li>✓ Use olive oil instead of butter</li>
+              <li>✓ Eat more fiber to lower cholesterol</li>
+            </ul>
+            <p className="text-sm text-amber-500 mt-2">✗ Avoid: Fried foods, fatty meats, full-fat dairy</p>
           </div>
         </div>
       </div>
@@ -347,6 +390,8 @@ const sugarPercentage = (totals.sugar / goals.sugar) * 100;
     {conditions.length > 0 && 
       !(hasDiabetes && sugarPercentage >= 70) && 
       !(hasDiabetes && (totals.carbs / goals.carbs) * 100 >= 80) &&
+      !(hasHypertension && (totals.sodium / goals.sodium) * 100 >= 70) &&
+      !(hasHighCholesterol && (totals.fat / goals.fat) * 100 >= 75) &&
       !(hasOverweight && (totals.calories / goals.calories) * 100 >= 85) &&
       !(hasOverweight && (totals.fat / goals.fat) * 100 >= 80) && (
       <div className="bg-green-50 border border-green-200 rounded-xl p-4">
@@ -391,45 +436,47 @@ const sugarPercentage = (totals.sugar / goals.sugar) * 100;
         </div>
 
         {/* Meal Diary */}
-<div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-  <div className="flex items-center gap-2 mb-4">
-    <span>🍽️</span>
-    <h2 className="font-semibold text-gray-800">Today's Meals</h2>
-  </div>
-
-  {Object.entries(mealsByType).map(([mealType, foods]) => (
-    <div key={mealType} className="mb-4 last:mb-0">
-      <h3 className="text-sm font-medium text-gray-500 mb-2">{mealType}</h3>
-      {foods.length > 0 ? (
-        <div className="space-y-2">
-          {foods.map((food, index) => (
-            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-              <div className="flex-1">
-                <p className="text-gray-800 font-medium">{food.food_name}</p>
-                <p className="text-xs text-gray-500">
-                  {food.quantity !== 1 && `${food.quantity}x • `}
-                  {Math.round(food.calories * food.quantity)} cal
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-600">{Math.round(food.carbs_g * food.quantity)}g carbs</p>
-                <button
-                  onClick={() => handleDeleteFood(food.meal_food_id)}
-                  className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
-                  title="Remove"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-400 text-sm italic">No foods logged</p>
-      )}
+{activeTab === 'Daily' && (
+  <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+    <div className="flex items-center gap-2 mb-4">
+      <span>🍽️</span>
+      <h2 className="font-semibold text-gray-800">Today's Meals</h2>
     </div>
-  ))}
-</div>
+
+    {Object.entries(mealsByType).map(([mealType, foods]) => (
+      <div key={mealType} className="mb-4 last:mb-0">
+        <h3 className="text-sm font-medium text-gray-500 mb-2">{mealType}</h3>
+        {foods.length > 0 ? (
+          <div className="space-y-2">
+            {foods.map((food, index) => (
+              <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                <div className="flex-1">
+                  <p className="text-gray-800 font-medium">{food.food_name}</p>
+                  <p className="text-xs text-gray-500">
+                    {food.quantity !== 1 && `${food.quantity}x • `}
+                    {Math.round(food.calories * food.quantity)} cal
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-600">{Math.round(food.carbs_g * food.quantity)}g carbs</p>
+                  <button
+                    onClick={() => handleDeleteFood(food.meal_food_id)}
+                    className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                    title="Remove"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400 text-sm italic">No foods logged</p>
+        )}
+      </div>
+    ))}
+  </div>
+)}
       </div>
     </div>
   );
