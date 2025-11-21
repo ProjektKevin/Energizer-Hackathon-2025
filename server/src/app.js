@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mainRoutes from './routes/mainRoute.js';
 import { pool, testDBConnection } from './services/db.js'; 
+import profileRoutes from './routes/profileRoutes.js';
 
 // config the dotenv
 dotenv.config();
@@ -25,6 +26,7 @@ const CORS_OPTIONS = {
 app.use(cors(CORS_OPTIONS));
 
 app.use('/api', mainRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Test the database connection when the server starts
 // testDBConnection(pool);
