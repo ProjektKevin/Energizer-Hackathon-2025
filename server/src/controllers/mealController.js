@@ -43,3 +43,44 @@ export const logMeal = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getMeals = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('meals')
+      .select(`
+        *,
+        meal_foods (
+          meal_food_id,
+          quantity,
+          foods (food_name, calories, carbs_g, protein_g)
+        )
+      `)
+      .eq('user_id', HARDCODED_USER_ID)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteMealFood = async (req, res) => {
+  try {
+    const { mealFoodId } = req.params;
+
+    // Delete the meal_food entry
+    const { error } = await supabase
+      .from('meal_foods')
+      .delete()
+      .eq('meal_food_id', mealFoodId);
+
+    if (error) throw error;
+
+    res.json({ message: 'Food removed from meal' });
+  } catch (error) {
+    console.error('Error deleting meal food:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -6,6 +6,7 @@ import RecordPage from './pages/RecordPage';
 import FoodSearch from './pages/FoodSearch';  // Add this
 import NavBar from './components/navbar';
 import FoodDetail from './pages/FoodDetail'; 
+import StatsPage from './pages/StatsPage';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="search" element={<FoodSearch />} /> 
         <Route path="*" element={<NotFoundPage />} />
         <Route path="food/:id" element={<FoodDetail />} />
+        <Route path="stats" element={<StatsPage />} />
       </Routes>
       <NavBar />
     </BrowserRouter>
