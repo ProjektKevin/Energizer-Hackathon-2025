@@ -89,7 +89,7 @@ function FoodLogCard({ foodData, userData, onLogMeal }) {
   const totals = calculateTotals();
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-green-50 to-blue-50">
+    <Card className="p-6 bg-linear-to-br from-green-50 to-blue-50">
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -199,7 +199,7 @@ function FoodLogCard({ foodData, userData, onLogMeal }) {
         <Button
           onClick={handleLogMeal}
           disabled={isLogging || Object.keys(selectedVariants).length === 0}
-          className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+          className="w-full h-12 text-lg font-semibold bg-linear-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
         >
           {isLogging ? "Logging..." : "📝 Log This Meal"}
         </Button>

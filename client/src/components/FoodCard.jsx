@@ -73,7 +73,7 @@ const FoodCard = ({ food }) => {
       className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow"
     >
       {/* Health Score Badge with Label */}
-      <div className="flex flex-col items-center mr-3 flex-shrink-0">
+      <div className="flex flex-col items-center mr-3 shrink-0">
         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${scoreStyle.bg}`}>
           <span className={`text-sm font-bold ${scoreStyle.text}`}>{healthScore}</span>
         </div>

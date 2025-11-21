@@ -9,7 +9,7 @@ function RecipeCard({ ingredients, recipes }) {
   }
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-orange-50 to-yellow-50">
+    <Card className="p-6 bg-linear-to-br from-orange-50 to-yellow-50">
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
