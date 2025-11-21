@@ -18,9 +18,10 @@ function NutritionAssistantModal({ isOpen, onClose }) {
   const [isMuted, setIsMuted] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
 
   // Microphone with Voice Activity Detection
-  const { isTalking, audioChunks, startListening, stopListening, isListening } =
+  const { isTalking, audioChunks, startListening, stopListening, isListening, setMuted } =
     useMicrophoneAutoVAD();
 
   // AssemblyAI Streaming
@@ -69,10 +70,32 @@ function NutritionAssistantModal({ isOpen, onClose }) {
   const handleProcessRequest = async () => {
     setIsProcessing(true);
     try {
+      // Create user message object
+      const userMessage = {
+        role: "user",
+        content: transcript,
+        timestamp: new Date().toISOString(),
+      };
+
+      // add the message to history
+      const updatedHistory = [...conversationHistory, userMessage];
+      setConversationHistory(updatedHistory);
+
+      // send backend with history
       const response = await sendToAI({
         transcript,
         image: capturedImage,
+        conversationHistory: updatedHistory,
       });
+
+      // add AI message to history
+      const aiMessage = {
+        role: "assistant",
+        content: response.message || "Response received",
+        timestamp: new Date().toISOString(),
+      };
+      setConversationHistory([...updatedHistory, aiMessage]);
+
       setAiResponse(response);
     } catch (error) {
       console.error("Error processing AI request:", error);
@@ -82,7 +105,9 @@ function NutritionAssistantModal({ isOpen, onClose }) {
   };
 
   const handleMuteToggle = () => {
-    setIsMuted(!isMuted);
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+    setMuted(newMutedState);
   };
 
   const handleCameraToggle = () => {
@@ -103,6 +128,7 @@ function NutritionAssistantModal({ isOpen, onClose }) {
     stopListening();
     if (isCameraOpen) closeCamera();
     setAiResponse(null);
+    setConversationHistory([]);
     onClose();
   };
 

@@ -67,7 +67,7 @@ function FoodLogCard({ foodData, userData, onLogMeal }) {
       }));
 
       const response = await axios.post(
-        `http://localhost:3000/api/tracker/meal/${userData.userId}`,
+        `api/tracker/meal/${userData.userId}`,
         {
           foods,
           mealType: "snack",

@@ -5,5 +5,7 @@ const router = express.Router();
 
 // ----- Routes -----
 router.post('/quickRecordSTT', aiController.upload.single('audio'), aiController.speechToText, aiController.detectFoodAndCalory);
+router.post("/process", aiController.processMultimodalRequest);
+
 
 export default router;

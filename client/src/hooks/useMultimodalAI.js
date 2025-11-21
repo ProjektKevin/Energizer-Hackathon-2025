@@ -5,7 +5,11 @@ function useMultimodalAI() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const sendToAI = useCallback(async ({ transcript, image }) => {
+  const sendToAI = useCallback(async ({ transcript, image, conversationHistory = [] }) => {
+    console.log("🤖 sendToAI called");
+    console.log("  - Transcript:", transcript);
+    console.log("  - Image:", image ? "Yes" : "No");
+    console.log("  - History length:", conversationHistory.length);
     if (!transcript) {
       console.log("No transcript to send");
       return null;
@@ -24,13 +28,14 @@ function useMultimodalAI() {
           : image;
       }
 
-      const response = await axios.post(
-        "/api/assistant/process",
-        {
-          transcript,
-          image: imageBase64,
-        }
-      );
+      console.log("📤 Making API call to backend...");
+      const response = await axios.post("http://localhost:8080/api/ai/process", {
+        transcript,
+        image: imageBase64,
+        conversationHistory,
+      });
+
+      console.log("✅ Backend response received:", response.data);
 
       if (response.data.success) {
         return response.data;

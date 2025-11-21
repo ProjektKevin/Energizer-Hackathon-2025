@@ -5,55 +5,74 @@ function useAssemblyAIStream() {
   const [isStreaming, setIsStreaming] = useState(false);
   const wsRef = useRef(null);
 
-  const streamAudio = useCallback(async (audioChunks) => {
-    if (audioChunks.length === 0) return;
-    if (isStreaming) return; // Already streaming
+  const streamAudio = useCallback(
+    async (audioChunks) => {
+      console.log("🎤 streamAudio called with", audioChunks.length, "chunks");
 
-    try {
-      setIsStreaming(true);
+      if (audioChunks.length === 0) {
+        console.log("⚠️ No audio chunks to stream");
+        return;
+      }
+      if (isStreaming) {
+        console.log("⚠️ Already streaming, ignoring call");
+        return;
+      }
 
-      // Connect to backend WebSocket endpoint
-      const ws = new WebSocket("ws://localhost:3000/api/stt-stream");
-      wsRef.current = ws;
+      try {
+        setIsStreaming(true);
 
-      ws.onopen = () => {
-        console.log("WebSocket connected");
+        // 🆕 FIXED: Changed port from 3000 to 8080
+        const ws = new WebSocket("ws://localhost:8080/api/stt-stream");
+        wsRef.current = ws;
 
-        // Send audio chunks
-        audioChunks.forEach((chunk) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            // Convert Blob to ArrayBuffer and send
-            chunk.arrayBuffer().then((buffer) => {
-              ws.send(buffer);
-            });
+        ws.onopen = () => {
+          console.log("✅ WebSocket connected to STT service");
+
+          // 🆕 FIXED: Added index parameter to forEach
+          audioChunks.forEach((chunk, index) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              // Convert Blob to ArrayBuffer and send
+              chunk.arrayBuffer().then((buffer) => {
+                ws.send(buffer);
+                console.log(`📨 Sent audio chunk ${index + 1}/${audioChunks.length}`);
+              });
+            }
+          });
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log("📥 WebSocket message received:", data);
+
+          // Update transcript with partial or final results
+          if (data.text) {
+            console.log("📝 Transcript update:", data.text);
+            setTranscript(data.text);
           }
-        });
-      };
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        // Update transcript with partial or final results
-        if (data.text) {
-          setTranscript(data.text);
-        }
-      };
+          if (data.type === "final") {
+            console.log("✅ Final transcript received:", data.text);
+          }
+        };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
+        ws.onerror = (error) => {
+          console.error("❌ WebSocket error:", error);
+        };
 
-      ws.onclose = () => {
-        console.log("WebSocket closed");
+        ws.onclose = () => {
+          console.log("🔌 WebSocket closed");
+          setIsStreaming(false);
+        };
+      } catch (error) {
+        console.error("❌ Error streaming audio:", error);
         setIsStreaming(false);
-      };
-    } catch (error) {
-      console.error("Error streaming audio:", error);
-      setIsStreaming(false);
-    }
-  }, [isStreaming]);
+      }
+    },
+    [isStreaming]
+  );
 
   const finalizeTranscript = useCallback(() => {
+    console.log("🏁 Finalizing transcript...");
     if (wsRef.current) {
       wsRef.current.close();
     }
