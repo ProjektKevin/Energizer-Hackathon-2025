@@ -1,15 +1,15 @@
 import supabase from '../services/supabaseClient.js';
 
-const HARDCODED_USER_ID = 1;
-
 // Get full profile
 export const getProfile = async (req, res) => {
   try {
+    const userId = req.user.user_id; // From JWT token via authMiddleware
+
     // Get user data
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('user_id', HARDCODED_USER_ID)
+      .eq('user_id', userId)
       .single();
 
     if (userError) throw userError;
@@ -18,7 +18,7 @@ export const getProfile = async (req, res) => {
     const { data: conditions, error: condError } = await supabase
       .from('user_conditions')
       .select('condition_name')
-      .eq('user_id', HARDCODED_USER_ID);
+      .eq('user_id', userId);
 
     if (condError) throw condError;
 
@@ -26,7 +26,7 @@ export const getProfile = async (req, res) => {
     const { data: allergies, error: allergyError } = await supabase
       .from('user_allergies')
       .select('allergy_id, allergy_name')
-      .eq('user_id', HARDCODED_USER_ID);
+      .eq('user_id', userId);
 
     if (allergyError) throw allergyError;
 
@@ -34,7 +34,7 @@ export const getProfile = async (req, res) => {
     const { data: preferences, error: prefError } = await supabase
       .from('user_preferences')
       .select('preference_id, preference_name, enabled')
-      .eq('user_id', HARDCODED_USER_ID);
+      .eq('user_id', userId);
 
     if (prefError) throw prefError;
 
@@ -85,6 +85,7 @@ export const getProfile = async (req, res) => {
 // Update profile
 export const updateProfile = async (req, res) => {
   try {
+    const userId = req.user.user_id; // From JWT token
     const { user, goals, conditions, allergies, preferences } = req.body;
 
     // Update user info
@@ -104,7 +105,7 @@ export const updateProfile = async (req, res) => {
         sugar_goal: goals.sugar,
         sodium_goal: goals.sodium
       })
-      .eq('user_id', HARDCODED_USER_ID);
+      .eq('user_id', userId);
 
     if (userError) throw userError;
 
@@ -112,11 +113,11 @@ export const updateProfile = async (req, res) => {
     await supabase
       .from('user_conditions')
       .delete()
-      .eq('user_id', HARDCODED_USER_ID);
+      .eq('user_id', userId);
 
     if (conditions && conditions.length > 0) {
       const conditionRows = conditions.map(c => ({
-        user_id: HARDCODED_USER_ID,
+        user_id: userId,
         condition_name: c
       }));
       await supabase.from('user_conditions').insert(conditionRows);
@@ -128,7 +129,7 @@ export const updateProfile = async (req, res) => {
         await supabase
           .from('user_preferences')
           .update({ enabled: pref.enabled })
-          .eq('user_id', HARDCODED_USER_ID)
+          .eq('user_id', userId)
           .eq('preference_name', pref.preference_name);
       }
     }
@@ -144,11 +145,12 @@ export const updateProfile = async (req, res) => {
 // Add allergy
 export const addAllergy = async (req, res) => {
   try {
+    const userId = req.user.user_id; // From JWT token
     const { allergy_name } = req.body;
 
     const { data, error } = await supabase
       .from('user_allergies')
-      .insert({ user_id: HARDCODED_USER_ID, allergy_name })
+      .insert({ user_id: userId, allergy_name })
       .select()
       .single();
 
@@ -164,13 +166,14 @@ export const addAllergy = async (req, res) => {
 // Delete allergy
 export const deleteAllergy = async (req, res) => {
   try {
+    const userId = req.user.user_id; // From JWT token
     const { id } = req.params;
 
     const { error } = await supabase
       .from('user_allergies')
       .delete()
       .eq('allergy_id', id)
-      .eq('user_id', HARDCODED_USER_ID);
+      .eq('user_id', userId);
 
     if (error) throw error;
     res.json({ success: true });
