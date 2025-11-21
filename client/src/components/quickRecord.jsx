@@ -15,7 +15,7 @@ function QuickRecord() {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
 
-  // --- Start recording
+  // --- Start recording ---
   const startRecording = async () => {
     setTranscript("");
     setDetectedFoods([]);
@@ -42,7 +42,7 @@ function QuickRecord() {
     setRecording(true);
   };
 
-  // --- Stop recording
+  // --- Stop recording ---
   const stopRecording = () => {
     if (mediaRecorderRef.current && recording) {
       mediaRecorderRef.current.stop();
@@ -50,7 +50,7 @@ function QuickRecord() {
     }
   };
 
-  // --- Toggle recording
+  // --- Toggle recording ---
   const handleRecordClick = () => {
     if (recording) {
       stopRecording();
@@ -59,7 +59,7 @@ function QuickRecord() {
     }
   };
 
-  // --- Send audio to backend
+  // --- Send audio to backend ---
   const detectFood = async (audioBlob) => {
     try {
       const formData = new FormData();
@@ -91,7 +91,7 @@ function QuickRecord() {
     }
   };
 
-  // --- Handle variation selection
+  // --- Handle variation selection ---
   const handleVariationSelect = (foodIndex, variantIndex) => {
     setSelectedVariations((prev) => ({
       ...prev,
@@ -99,17 +99,17 @@ function QuickRecord() {
     }));
   };
 
-  // --- Proceed to next step
+  // --- Proceed to next step ---
   const handleNextStep = () => {
     setModalStep(modalStep + 1);
   };
 
-  // --- Go back to previous step
+  // --- Go back to previous step ---
   const handleBackStep = () => {
     setModalStep(modalStep - 1);
   };
 
-  // --- Confirm and save selections
+  // --- Confirm and save selections ---
   const handleConfirm = async () => {
   const finalSelections = Object.entries(selectedVariations).map(([foodIndex, variantIndex]) => {
     const variant = foodVariations[foodIndex].variants[variantIndex];
@@ -152,7 +152,7 @@ function QuickRecord() {
 };
 
 
-  // --- Calculate nutrition totals for selected items
+  // --- Calculate nutrition totals for selected items ---
   const calculateTotals = () => {
     const totals = {
       calories: 0,
@@ -179,8 +179,7 @@ function QuickRecord() {
     return totals;
   };
 
-  // --- Progress Bar Component
-  // --- Progress Bar Component
+  // --- Progress Bar Component ---
   const NutritionBar = ({ label, current, adding, goal, unit = "g" }) => {
     // Ensure all values are numbers with fallbacks
     const currentValue = parseFloat(current) || 0;
@@ -561,7 +560,7 @@ function QuickRecord() {
                 )}
 
                 {/* Quick Summary Card */}
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 mb-6 shadow-lg">
+                <div className="bg-linear-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 mb-6 shadow-lg">
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-xl opacity-90">Total Adding: </p>
