@@ -13,3 +13,4 @@ export const insertNewFoodLog = async (userId, foodName, calories) => {
     throw error;
   }
 }
+

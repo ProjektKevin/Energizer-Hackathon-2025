@@ -1,5 +1,8 @@
 import { transcribe } from "../services/sttService.js";
+import { detectFoods } from "../services/nlpService.js";
 import multer from "multer";
+import fs from "fs";
+
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -7,7 +10,7 @@ const upload = multer({
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
-  }
+  },
 });
 
 // Controller to handle speech to text
@@ -29,7 +32,7 @@ export const speechToText = async (req, res, next) => {
 
     // Extract the transcript text
     const transcriptText = transcriptResult.text;
-    console.log('TRANSCRIPT: ' + transcriptText);
+    console.log("TRANSCRIPT: " + transcriptText);
 
     // Check if this is for food detection
     if (req.path.includes("quickRecordSTT")) {
@@ -57,26 +60,30 @@ export const speechToText = async (req, res, next) => {
 export const detectFoodAndCalory = async (req, res) => {
   try {
     const transcriptText = res.locals.transcriptText;
-    // let detectedFoodList = [];
-    // let foodCaloryMappingList = [];
+    let detectedFoodList = [];
+    let foodCaloryMappingList = [];
+
+    // Get foodlist
+    const foodList = JSON.parse(fs.readFileSync("../data/foods.json", "utf8"));
 
     // Extract all the detected food
+    detectedFoodList = detectFoods(transcriptText, foodList);
 
     // Extract all the calory for each detected food using the dataset
 
     // send back the data to the front end
-    let detectedFoodList = ["Apple", "Banana"];
-    let foodCaloryMappingList = [
-      {
-        apple1: 15,
-        apple2: 30,
-        apple3: 40,
-      },
-      {
-        banana1: 20,
-        banana2: 10
-      }
-    ];
+    // let detectedFoodList = ["Apple", "Banana"];
+    // let foodCaloryMappingList = [
+    //   {
+    //     apple1: 15,
+    //     apple2: 30,
+    //     apple3: 40,
+    //   },
+    //   {
+    //     banana1: 20,
+    //     banana2: 10,
+    //   },
+    // ];
 
     /* 
     [
@@ -88,7 +95,7 @@ export const detectFoodAndCalory = async (req, res) => {
     res.status(200).json({
       success: true,
       detectedFoodList,
-      foodCaloryMappingList
+      foodCaloryMappingList,
     });
   } catch (error) {
     console.error("Error in speechToText controller:", error);
