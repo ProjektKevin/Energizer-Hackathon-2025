@@ -1,16 +1,17 @@
 import { useState, useRef } from "react";
 import { Dialog, Disclosure } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import api from "../api/axios";
 
 function QuickRecord() {
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [detectedFoods, setDetectedFoods] = useState([]); // ["Apple", "Banana"]
-  const [foodVariations, setFoodVariations] = useState([]); // Array of variation objects
-  const [selectedVariations, setSelectedVariations] = useState({}); // {0: "apple2", 1: "banana1"}
+  const [detectedFoods, setDetectedFoods] = useState([]);
+  const [foodVariations, setFoodVariations] = useState([]);
+  const [selectedVariations, setSelectedVariations] = useState({});
+  const [userData, setUserData] = useState(null); // Store user goals and intake
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalStep, setModalStep] = useState(1); // 1: Detected foods, 2: Select variations, 3: Summary
+  const [modalStep, setModalStep] = useState(1);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
 
@@ -20,6 +21,7 @@ function QuickRecord() {
     setDetectedFoods([]);
     setFoodVariations([]);
     setSelectedVariations({});
+    setUserData(null);
     setModalStep(1);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream);
@@ -31,8 +33,7 @@ function QuickRecord() {
     recorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
       await detectFood(blob);
-      // Stop all tracks to release the microphone
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
     };
 
     mediaRecorderRef.current = recorder;
@@ -61,39 +62,40 @@ function QuickRecord() {
   // --- Send audio to backend
   const detectFood = async (audioBlob) => {
     try {
-      // Create FormData to send audio file
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
 
       console.log("Calling backend now!");
-      // Make API call to backend
       const response = await api.post("/api/ai/quickRecordSTT", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      // Update state with response data
-      // Backend returns: { detectedFoodList: ["Apple", "Banana"], foodCaloryMappingList: [{apple1: 15, apple2: 30}, {banana1: 20}] }
-      setDetectedFoods(response.data.detectedFoodList || []);
+      // Extract detected food names from foodCaloryMappingList
+      const detectedFoodNames = response.data.foodCaloryMappingList.map(
+        (item) => item.foodName
+      );
+
+      setDetectedFoods(detectedFoodNames);
       setFoodVariations(response.data.foodCaloryMappingList || []);
+      setUserData(response.data.userData || null);
       setModalStep(1);
       setIsModalOpen(true);
-
     } catch (error) {
       console.error("Error detecting food:", error);
-      // Show error to user
       setDetectedFoods([]);
       setFoodVariations([]);
+      setUserData(null);
       setIsModalOpen(true);
     }
   };
 
   // --- Handle variation selection
-  const handleVariationSelect = (foodIndex, variationKey) => {
-    setSelectedVariations(prev => ({
+  const handleVariationSelect = (foodIndex, variantIndex) => {
+    setSelectedVariations((prev) => ({
       ...prev,
-      [foodIndex]: variationKey
+      [foodIndex]: variantIndex,
     }));
   };
 
@@ -109,39 +111,151 @@ function QuickRecord() {
 
   // --- Confirm and save selections
   const handleConfirm = async () => {
-    // Prepare final data to save
-    const finalSelections = detectedFoods.map((food, index) => {
-      const selectedKey = selectedVariations[index];
-      const calories = foodVariations[index]?.[selectedKey] || 0;
-      return {
-        foodName: food,
-        variation: selectedKey,
-        calories: calories
-      };
+  const finalSelections = Object.entries(selectedVariations).map(([foodIndex, variantIndex]) => {
+    const variant = foodVariations[foodIndex].variants[variantIndex];
+    return {
+      foodId: variant.food_id,
+      foodName: variant.name,
+      quantity: 1, // You could add a quantity selector in the UI
+      calories: variant.calories,
+      protein: variant.protein,
+      carbs: variant.carbs,
+      fiber: variant.fiber,
+      sugars: variant.sugars,
+      sodium: variant.sodium,
+      cholesterol: variant.cholesterol,
+    };
+  });
+
+  console.log("Final selections:", finalSelections);
+  
+  try {
+    // Optionally detect meal type based on time of day
+    const currentHour = new Date().getHours();
+    let mealType = 'snack';
+    if (currentHour >= 5 && currentHour < 11) mealType = 'breakfast';
+    else if (currentHour >= 11 && currentHour < 16) mealType = 'lunch';
+    else if (currentHour >= 16 && currentHour < 22) mealType = 'dinner';
+
+    const response = await api.post("/api/tracker/1", { 
+      foods: finalSelections,
+      mealType: mealType
+    });
+    
+    console.log("response:", response.data.message);
+    
+    setIsModalOpen(false);
+    setSelectedVariations({});
+  } catch (error) {
+    console.error("Error saving meal:", error);
+  }
+};
+
+
+  // --- Calculate nutrition totals for selected items
+  const calculateTotals = () => {
+    const totals = {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      sodium: 0,
+      fiber: 0,
+      sugars: 0,
+      cholesterol: 0,
+    };
+
+    Object.entries(selectedVariations).forEach(([foodIndex, variantIndex]) => {
+      const variant = foodVariations[foodIndex].variants[variantIndex];
+      // Convert to numbers using parseFloat to handle string values
+      totals.calories += parseFloat(variant.calories) || 0;
+      totals.protein += parseFloat(variant.protein) || 0;
+      totals.carbs += parseFloat(variant.carbs) || 0;
+      totals.sodium += parseFloat(variant.sodium) || 0;
+      totals.fiber += parseFloat(variant.fiber) || 0;
+      totals.sugars += parseFloat(variant.sugars) || 0;
+      totals.cholesterol += parseFloat(variant.cholesterol) || 0;
     });
 
-    console.log("Final selections:", finalSelections);
-    
-    try {
-      // Send to backend to save the meal record
-      const response = await api.post("/api/meals", { foods: finalSelections });
-      console.log("response: " + response.message);
-      
-      // Close modal and reset
-      setIsModalOpen(false);
-      setSelectedVariations({});
-    } catch (error) {
-      console.error("Error saving meal:", error);
-    }
+    return totals;
   };
 
-  // Calculate total calories
-  const getTotalCalories = () => {
-    return detectedFoods.reduce((total, food, index) => {
-      const selectedKey = selectedVariations[index];
-      const calories = foodVariations[index]?.[selectedKey] || 0;
-      return total + calories;
-    }, 0);
+  // --- Progress Bar Component
+  // --- Progress Bar Component
+  const NutritionBar = ({ label, current, adding, goal, unit = "g" }) => {
+    // Ensure all values are numbers with fallbacks
+    const currentValue = parseFloat(current) || 0;
+    const addingValue = parseFloat(adding) || 0;
+    const goalValue = parseFloat(goal) || 1; // Avoid division by zero
+
+    const currentPercent = Math.min((currentValue / goalValue) * 100, 100);
+    const addingPercent =
+      Math.min(((currentValue + addingValue) / goalValue) * 100, 100) -
+      currentPercent;
+    const total = currentValue + addingValue;
+    const isOverGoal = total > goalValue;
+
+    return (
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-semibold text-gray-700">{label}</span>
+          <span className="text-xs text-gray-500">
+            {currentValue.toFixed(1)} + {addingValue.toFixed(1)} ={" "}
+            <span
+              className={
+                isOverGoal ? "text-red-600 font-bold" : "font-semibold"
+              }
+            >
+              {total.toFixed(1)}
+            </span>{" "}
+            / {goalValue} {unit}
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="relative w-full h-8 bg-gray-200 rounded-lg overflow-hidden">
+          {/* Current intake */}
+          <div
+            className="absolute left-0 top-0 h-full bg-blue-500 transition-all"
+            style={{ width: `${currentPercent}%` }}
+          />
+          {/* Adding amount */}
+          <div
+            className={`absolute top-0 h-full ${
+              isOverGoal ? "bg-red-400" : "bg-amber-400"
+            } transition-all`}
+            style={{
+              left: `${currentPercent}%`,
+              width: `${addingPercent}%`,
+            }}
+          />
+          {/* Goal line */}
+          <div className="absolute top-0 right-0 h-full w-0.5 bg-gray-700" />
+
+          {/* Percentage label */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs font-bold text-white drop-shadow-md">
+              {((total / goalValue) * 100).toFixed(0)}%
+            </span>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex gap-4 mt-1 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+            <span className="text-gray-600">Current</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div
+              className={`w-3 h-3 ${
+                isOverGoal ? "bg-red-400" : "bg-amber-400"
+              } rounded`}
+            ></div>
+            <span className="text-gray-600">Adding</span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -162,14 +276,10 @@ function QuickRecord() {
         onClose={() => setIsModalOpen(false)}
         className="relative z-50"
       >
-        {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
 
-        {/* Full-screen container */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          {/* Modal panel */}
           <Dialog.Panel className="mx-auto max-w-md w-full bg-white rounded-xl p-6 shadow-xl max-h-[80vh] overflow-y-auto">
-            
             {/* Progress indicator */}
             <div className="flex items-center justify-center gap-2 mb-6">
               {[1, 2, 3].map((step) => (
@@ -196,13 +306,17 @@ function QuickRecord() {
                         <p className="font-semibold mb-2">We detected:</p>
                         <ul className="list-disc ml-6 text-gray-700">
                           {detectedFoods.map((food, i) => (
-                            <li key={i} className="capitalize">{food}</li>
+                            <li key={i} className="capitalize">
+                              {food}
+                            </li>
                           ))}
                         </ul>
                       </div>
                     </>
                   ) : (
-                    <p className="text-gray-500">No foods detected. Please try again.</p>
+                    <p className="text-gray-500">
+                      No foods detected. Please try again.
+                    </p>
                   )}
                 </div>
 
@@ -225,7 +339,7 @@ function QuickRecord() {
               </>
             )}
 
-            {/* Step 2: Select specific variations with Accordions */}
+            {/* Step 2: Select specific variations */}
             {modalStep === 2 && (
               <>
                 <Dialog.Title className="text-xl font-bold mb-4">
@@ -237,19 +351,28 @@ function QuickRecord() {
                 </p>
 
                 <div className="space-y-3">
-                  {detectedFoods.map((food, foodIndex) => {
-                    const isSelected = selectedVariations[foodIndex];
-                    const selectedCalories = isSelected ? foodVariations[foodIndex]?.[isSelected] : null;
-                    
+                  {foodVariations.map((foodGroup, foodIndex) => {
+                    const isSelected =
+                      selectedVariations[foodIndex] !== undefined;
+                    const selectedVariant = isSelected
+                      ? foodGroup.variants[selectedVariations[foodIndex]]
+                      : null;
+
                     return (
                       <Disclosure key={foodIndex} defaultOpen={foodIndex === 0}>
                         {({ open }) => (
-                          <div className={`border rounded-lg overflow-hidden transition-all ${
-                            isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200'
-                          }`}>
+                          <div
+                            className={`border rounded-lg overflow-hidden transition-all ${
+                              isSelected
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200"
+                            }`}
+                          >
                             <Disclosure.Button className="flex w-full justify-between items-center px-4 py-3 text-left hover:bg-gray-50 transition-colors">
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold capitalize">{food}</span>
+                                <span className="font-semibold capitalize">
+                                  {foodGroup.foodName}
+                                </span>
                                 {isSelected && (
                                   <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full">
                                     ✓ Selected
@@ -257,46 +380,57 @@ function QuickRecord() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
-                                {selectedCalories && (
+                                {selectedVariant && (
                                   <span className="text-sm font-semibold text-green-600">
-                                    {selectedCalories} cal
+                                    {selectedVariant.calories} cal
                                   </span>
                                 )}
                                 <ChevronDownIcon
                                   className={`w-5 h-5 text-gray-500 transition-transform ${
-                                    open ? 'transform rotate-180' : ''
+                                    open ? "transform rotate-180" : ""
                                   }`}
                                 />
                               </div>
                             </Disclosure.Button>
-                            
+
                             <Disclosure.Panel className="px-4 pb-3 pt-1 bg-white">
                               <div className="space-y-2">
-                                {foodVariations[foodIndex] && Object.entries(foodVariations[foodIndex]).map(([key, calories]) => (
-                                  <label
-                                    key={key}
-                                    className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg border transition-all ${
-                                      selectedVariations[foodIndex] === key
-                                        ? 'bg-blue-50 border-blue-300'
-                                        : 'hover:bg-gray-50 border-gray-200'
-                                    }`}
-                                  >
-                                    <input
-                                      type="radio"
-                                      name={`food-${foodIndex}`}
-                                      value={key}
-                                      checked={selectedVariations[foodIndex] === key}
-                                      onChange={() => handleVariationSelect(foodIndex, key)}
-                                      className="w-4 h-4 text-blue-500"
-                                    />
-                                    <span className="flex-1 capitalize">
-                                      {key.replace(/(\d+)$/, ' $1')}
-                                    </span>
-                                    <span className="text-sm font-semibold text-gray-600">
-                                      {calories} cal
-                                    </span>
-                                  </label>
-                                ))}
+                                {foodGroup.variants.map(
+                                  (variant, variantIndex) => (
+                                    <label
+                                      key={variantIndex}
+                                      className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg border transition-all ${
+                                        selectedVariations[foodIndex] ===
+                                        variantIndex
+                                          ? "bg-blue-50 border-blue-300"
+                                          : "hover:bg-gray-50 border-gray-200"
+                                      }`}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`food-${foodIndex}`}
+                                        value={variantIndex}
+                                        checked={
+                                          selectedVariations[foodIndex] ===
+                                          variantIndex
+                                        }
+                                        onChange={() =>
+                                          handleVariationSelect(
+                                            foodIndex,
+                                            variantIndex
+                                          )
+                                        }
+                                        className="w-4 h-4 text-blue-500"
+                                      />
+                                      <span className="flex-1 capitalize">
+                                        {variant.name}
+                                      </span>
+                                      <span className="text-sm font-semibold text-gray-600">
+                                        {variant.calories} cal
+                                      </span>
+                                    </label>
+                                  )
+                                )}
                               </div>
                             </Disclosure.Panel>
                           </div>
@@ -315,7 +449,10 @@ function QuickRecord() {
                   </button>
                   <button
                     onClick={handleNextStep}
-                    disabled={Object.keys(selectedVariations).length !== detectedFoods.length}
+                    disabled={
+                      Object.keys(selectedVariations).length !==
+                      detectedFoods.length
+                    }
                     className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
                     Review
@@ -324,45 +461,116 @@ function QuickRecord() {
               </>
             )}
 
-            {/* Step 3: Summary */}
+            {/* Step 3: Summary with Expandable Nutrition Stats */}
             {modalStep === 3 && (
               <>
                 <Dialog.Title className="text-xl font-bold mb-4">
-                  Summary
+                  Meal Summary
                 </Dialog.Title>
 
-                <p className="text-sm text-gray-600 mb-4">
-                  Review your meal before confirming:
-                </p>
+                {/* Selected Items List */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <p className="font-semibold text-gray-700 mb-3">
+                    Selected Items:
+                  </p>
+                  <div className="space-y-2">
+                    {Object.entries(selectedVariations).map(
+                      ([foodIndex, variantIndex]) => {
+                        const variant =
+                          foodVariations[foodIndex].variants[variantIndex];
 
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3 mb-4">
-                  {detectedFoods.map((food, index) => {
-                    const selectedKey = selectedVariations[index];
-                    const calories = foodVariations[index]?.[selectedKey] || 0;
-                    
-                    return (
-                      <div key={index} className="flex justify-between items-center border-b border-gray-200 pb-2 last:border-0 last:pb-0">
-                        <div>
-                          <p className="font-semibold capitalize">{food}</p>
-                          <p className="text-sm text-gray-500 capitalize">
-                            {selectedKey?.replace(/(\d+)$/, ' $1')}
-                          </p>
-                        </div>
-                        <span className="text-lg font-bold text-gray-700">
-                          {calories} cal
-                        </span>
-                      </div>
-                    );
-                  })}
+                        return (
+                          <div
+                            key={foodIndex}
+                            className="flex justify-between items-center bg-white rounded-lg p-3 border border-gray-200"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-800">
+                                {variant.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {variant.category}
+                              </p>
+                            </div>
+                            <span className="text-lg font-bold text-blue-600">
+                              {variant.calories} cal
+                            </span>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
                 </div>
 
-                {/* Total Calories */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                {/* Nutrition Impact - Expandable */}
+                {userData && (
+                  <Disclosure>
+                    {({ open }) => (
+                      <div className="border border-gray-200 rounded-lg mb-4">
+                        <Disclosure.Button className="flex w-full justify-between items-center px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors rounded-t-lg">
+                          <span className="font-bold text-gray-800">
+                            📊 Nutrition Impact
+                          </span>
+                          <ChevronRightIcon
+                            className={`w-5 h-5 text-gray-600 transition-transform ${
+                              open ? "transform rotate-90" : ""
+                            }`}
+                          />
+                        </Disclosure.Button>
+
+                        <Disclosure.Panel className="px-4 py-4 bg-white rounded-b-lg">
+                          {(() => {
+                            const totals = calculateTotals();
+                            return (
+                              <div className="space-y-4">
+                                <NutritionBar
+                                  label="Calories"
+                                  current={userData?.todayIntake?.calorie || 0}
+                                  adding={totals.calories}
+                                  goal={userData?.goal?.calorie || 2000}
+                                  unit="kcal"
+                                />
+                                <NutritionBar
+                                  label="Protein"
+                                  current={userData?.todayIntake?.protein || 0}
+                                  adding={totals.protein}
+                                  goal={userData?.goal?.protein || 50}
+                                  unit="g"
+                                />
+                                <NutritionBar
+                                  label="Carbs"
+                                  current={userData?.todayIntake?.carbs || 0}
+                                  adding={totals.carbs}
+                                  goal={userData?.goal?.carbs || 300}
+                                  unit="g"
+                                />
+                                <NutritionBar
+                                  label="Sodium"
+                                  current={userData?.todayIntake?.sodium || 0}
+                                  adding={totals.sodium}
+                                  goal={userData?.goal?.sodium || 2300}
+                                  unit="mg"
+                                />
+                              </div>
+                            );
+                          })()}
+                        </Disclosure.Panel>
+                      </div>
+                    )}
+                  </Disclosure>
+                )}
+
+                {/* Quick Summary Card */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4 mb-6 shadow-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-blue-900">Total Calories</span>
-                    <span className="text-2xl font-bold text-blue-600">
-                      {getTotalCalories()} cal
-                    </span>
+                    <div>
+                      <p className="text-xl opacity-90">Total Adding: </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold">
+                        {calculateTotals().calories} calories
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -377,7 +585,7 @@ function QuickRecord() {
                     onClick={handleConfirm}
                     className="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors"
                   >
-                    Confirm & Save
+                    Log Meal
                   </button>
                 </div>
               </>
