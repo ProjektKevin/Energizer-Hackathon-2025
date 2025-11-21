@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getFoodById } from '../api/foodApi';
+import { MapPin } from 'lucide-react';  // Add this line
 
 const FoodDetail = () => {
   const { id } = useParams();
@@ -60,6 +61,11 @@ const FoodDetail = () => {
   if (loading) return <div className="p-4">Loading...</div>;
   if (!food) return <div className="p-4">Food not found</div>;
 
+  const openGoogleMaps = () => {
+  const query = encodeURIComponent(food.food_name + ' near me');
+  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+};
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 pb-24">
       {/* Back Button */}
@@ -71,11 +77,23 @@ const FoodDetail = () => {
       </button>
 
       {/* Food Header */}
-      <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
-        <h1 className="text-xl font-bold text-gray-800">{food.food_name}</h1>
-        <p className="text-blue-500 text-sm">{food.category}</p>
-      </div>
-
+{/* Food Header */}
+<div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+  <div className="flex justify-between items-start">
+    <div>
+      <h1 className="text-xl font-bold text-gray-800">{food.food_name}</h1>
+      <p className="text-blue-500 text-sm">{food.category}</p>
+    </div>
+    <button 
+      onClick={openGoogleMaps}
+      className="flex items-center gap-1 px-3 py-2 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+      title="Find nearby on Google Maps"
+    >
+      <MapPin className="w-4 h-4 text-red-500" />
+      <span className="text-xs font-medium text-red-600">Find Nearby</span>
+    </button>
+  </div>
+</div>
       {/* Glucose Impact */}
       <div className={`rounded-xl p-4 mb-4 ${
         impactLevel.color === 'green' ? 'bg-green-50' :
