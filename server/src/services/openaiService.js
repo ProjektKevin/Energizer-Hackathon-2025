@@ -60,11 +60,12 @@ Always respond with valid JSON in this structure:
   "detectedFoods": ["food1", "food2"] // Only for FOOD_LOGGING intent
   "ingredients": ["ingredient1", "ingredient2"] // Only for RECIPE_MODE
   "recipes": [{name, description}] // Only for RECIPE_MODE
-  "links": [{title, url}] // Only for VIDEO_SEARCH
+  "links": [{title: "Video title", url: "https://www.youtube.com/results?search_query=ENCODED_QUERY"}] // Only for VIDEO_SEARCH - use YouTube search URLs
 }
 
 CRITICAL RULES:
 - For FOOD_LOGGING: Return ONLY food names you see in the image, not nutrition calculations
+- For VIDEO_SEARCH: Provide 3-5 YouTube search URLs using https://www.youtube.com/results?search_query= format with URL-encoded keywords
 - NEVER suggest allergen foods to ${profile.name}
 - If allergies detected in food, warn the user immediately
 - Be conversational and friendly, use ${profile.name}'s name occasionally

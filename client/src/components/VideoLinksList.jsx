@@ -11,7 +11,7 @@ function VideoLinksList({ links }) {
   }
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 min-h-[300px]">
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <Video className="h-5 w-5 text-blue-600" />

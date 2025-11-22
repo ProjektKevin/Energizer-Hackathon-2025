@@ -1,24 +1,27 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-// Voice Activity Detection using Web Audio API
+/**
+ * Voice Activity Detection using Web Audio API
+ * Detects when user is speaking vs silence
+ */
 function useMicrophoneAutoVAD() {
   const [isTalking, setIsTalking] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [audioChunks, setAudioChunks] = useState([]);
 
   const mediaStreamRef = useRef(null);
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
   const isListeningRef = useRef(false);
-  const audioChunksRef = useRef([]); // 🆕 Use ref for chunks to avoid closure issues
+  const isTalkingRef = useRef(false);
 
   // VAD Configuration
   const VOICE_THRESHOLD = 0.02; // Energy threshold for voice detection
-  const SILENCE_DURATION = 1500; // ms of silence before stopping
+  const SILENCE_DURATION = 1500; // ms of silence before considering user stopped talking
 
-  // Start listening
+  /**
+   * Start listening for voice activity
+   */
   const startListening = useCallback(async () => {
     console.log("🎬 startListening called");
     try {
@@ -29,25 +32,24 @@ function useMicrophoneAutoVAD() {
           noiseSuppression: true,
           autoGainControl: true,
           channelCount: 1,
-          sampleRate: 48000,
+          // Note: Browser may not honor this exact sample rate
+          // The AudioContext in useAssemblyAIStream will handle resampling
+          sampleRate: 16000,
         },
       });
 
-      console.log("✅ Microphone access granted!", stream);
+      console.log("✅ Microphone access granted");
 
       const audioTrack = stream.getAudioTracks()[0];
-      console.log("🎤 Audio track:", audioTrack);
-      console.log("🎤 Track enabled:", audioTrack.enabled);
-      console.log("🎤 Track muted:", audioTrack.muted);
-      console.log("🎤 Track settings:", audioTrack.getSettings());
+      console.log("🎤 Audio track:", audioTrack.label);
+      console.log("🎤 Settings:", audioTrack.getSettings());
 
       mediaStreamRef.current = stream;
       setIsListening(true);
       isListeningRef.current = true;
 
-      // Setup Audio Context for VAD
-      const audioContext = new (window.AudioContext ||
-        window.webkitAudioContext)();
+      // Setup Audio Context for VAD only
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       audioContextRef.current = audioContext;
 
       const analyser = audioContext.createAnalyser();
@@ -57,53 +59,24 @@ function useMicrophoneAutoVAD() {
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
 
-      console.log("🔗 Audio source connected to analyser");
+      console.log("🔗 Audio source connected to analyser for VAD");
       console.log("🎤 AudioContext state:", audioContext.state);
-
-      // Setup MediaRecorder for capturing audio
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "audio/webm",
-      });
-      mediaRecorderRef.current = mediaRecorder;
-
-      // 🆕 FIXED: Reset chunks ref
-      audioChunksRef.current = [];
-
-      // 🆕 FIXED: Use ref to store chunks
-      mediaRecorder.ondataavailable = (e) => {
-        console.log("📦 Audio chunk available, size:", e.data.size);
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-          console.log("✅ Chunk added. Total chunks:", audioChunksRef.current.length);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        console.log("🏁 MediaRecorder stopped. Total chunks:", audioChunksRef.current.length);
-        console.log("📦 Chunks array:", audioChunksRef.current);
-        // 🆕 FIXED: Copy array to trigger state update
-        setAudioChunks([...audioChunksRef.current]);
-        console.log("✅ Audio chunks set to state");
-      };
-
-      // 🆕 ADD: More event listeners for debugging
-      mediaRecorder.onstart = () => {
-        console.log("▶️ MediaRecorder started");
-      };
-
-      mediaRecorder.onerror = (e) => {
-        console.error("❌ MediaRecorder error:", e);
-      };
 
       // Start VAD monitoring
       detectVoiceActivity();
+
+      // Return the stream so it can be used by useAssemblyAIStream
+      return stream;
     } catch (error) {
-      console.error("Error accessing microphone:", error);
+      console.error("❌ Error accessing microphone:", error);
       alert("Could not access microphone. Please check permissions.");
+      return null;
     }
   }, []);
 
-  // Stop listening
+  /**
+   * Stop listening
+   */
   const stopListening = useCallback(() => {
     console.log("🛑 stopListening called");
 
@@ -111,30 +84,27 @@ function useMicrophoneAutoVAD() {
 
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
     }
 
     if (audioContextRef.current && audioContextRef.current.state !== "closed") {
       audioContextRef.current.close();
-    }
-
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== "inactive"
-    ) {
-      mediaRecorderRef.current.stop();
+      audioContextRef.current = null;
     }
 
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
     }
 
     setIsListening(false);
     setIsTalking(false);
-    setAudioChunks([]);
-    audioChunksRef.current = []; // 🆕 Clear ref too
+    isTalkingRef.current = false;
   }, []);
 
-  // Voice Activity Detection Logic
+  /**
+   * Voice Activity Detection Logic
+   */
   const detectVoiceActivity = () => {
     console.log("👂 detectVoiceActivity started");
     if (!analyserRef.current) return;
@@ -145,7 +115,7 @@ function useMicrophoneAutoVAD() {
 
     const checkAudio = () => {
       if (!isListeningRef.current) {
-        console.log("🛑 Loop stopped - isListeningRef is false");
+        console.log("🛑 VAD loop stopped");
         return;
       }
 
@@ -159,25 +129,18 @@ function useMicrophoneAutoVAD() {
       }
       const rms = Math.sqrt(sum / bufferLength);
 
-      // Only log occasionally to avoid spam
-      if (Math.random() < 0.03) {
+      // Log occasionally to avoid spam
+      if (Math.random() < 0.01) {
         console.log("🎵 RMS:", rms.toFixed(4));
       }
 
       // Voice detected
       if (rms > VOICE_THRESHOLD) {
-        if (!isTalking) {
-          console.log("🎤 Voice detected - starting recording");
-          console.log("RMS value:", rms);
+        if (!isTalkingRef.current) {
+          console.log("🎤 Voice detected - user started talking");
+          console.log("   RMS value:", rms.toFixed(4));
           setIsTalking(true);
-
-          // Start recording
-          if (
-            mediaRecorderRef.current &&
-            mediaRecorderRef.current.state === "inactive"
-          ) {
-            mediaRecorderRef.current.start(100); // Collect data every 100ms
-          }
+          isTalkingRef.current = true;
         }
 
         // Clear silence timeout
@@ -187,26 +150,13 @@ function useMicrophoneAutoVAD() {
         }
       }
       // Silence detected while talking
-      else if (isTalking) {
-        console.log("🤫 Silence detected, RMS:", rms);
+      else if (isTalkingRef.current) {
         if (!silenceTimeoutRef.current) {
-          console.log("⏰ Starting 1.5s silence timer...");
+          console.log("🤫 Silence detected, starting timer...");
           silenceTimeoutRef.current = setTimeout(() => {
-            console.log("⏹️ Stopping recording after 1.5s silence");
-            console.log("📊 MediaRecorder state:", mediaRecorderRef.current?.state);
+            console.log("⏹️ User stopped talking (1.5s silence)");
             setIsTalking(false);
-
-            // Stop recording
-            if (
-              mediaRecorderRef.current &&
-              mediaRecorderRef.current.state === "recording"
-            ) {
-              console.log("🛑 Calling mediaRecorder.stop()");
-              mediaRecorderRef.current.stop();
-            } else {
-              console.log("⚠️ MediaRecorder not in recording state!");
-            }
-
+            isTalkingRef.current = false;
             silenceTimeoutRef.current = null;
           }, SILENCE_DURATION);
         }
@@ -219,13 +169,9 @@ function useMicrophoneAutoVAD() {
     checkAudio();
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopListening();
-    };
-  }, [stopListening]);
-
+  /**
+   * Mute/unmute the microphone
+   */
   const setMuted = useCallback((muted) => {
     if (mediaStreamRef.current) {
       const audioTrack = mediaStreamRef.current.getAudioTracks()[0];
@@ -236,13 +182,27 @@ function useMicrophoneAutoVAD() {
     }
   }, []);
 
+  /**
+   * Get the current media stream
+   */
+  const getMediaStream = useCallback(() => {
+    return mediaStreamRef.current;
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopListening();
+    };
+  }, [stopListening]);
+
   return {
     isTalking,
     isListening,
-    audioChunks,
     startListening,
     stopListening,
     setMuted,
+    getMediaStream,
   };
 }
 

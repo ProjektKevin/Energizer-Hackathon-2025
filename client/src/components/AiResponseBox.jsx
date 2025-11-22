@@ -30,7 +30,7 @@ function AIResponseBox({ response, isProcessing, onMealLogged }) {
   }
 
   return (
-    <Card className="flex-1 overflow-y-auto">
+    <Card className="flex-1 overflow-y-auto min-h-[400px]">
       <div className="p-6 space-y-4">
         {/* AI Message */}
         {response.message && (

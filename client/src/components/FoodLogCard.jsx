@@ -47,12 +47,14 @@ function FoodLogCard({ foodData, userData, onLogMeal }) {
     };
 
     Object.values(selectedVariants).forEach((variant) => {
-      totals.calories += variant.calories || 0;
-      totals.protein += variant.protein || 0;
-      totals.carbs += variant.carbs || 0;
-      totals.fat += variant.fat || 0;
-      totals.fiber += variant.fiber || 0;
-      totals.sodium += variant.sodium || 0;
+      if (variant) {
+        totals.calories += Number(variant.calories) || 0;
+        totals.protein += Number(variant.protein) || 0;
+        totals.carbs += Number(variant.carbs) || 0;
+        totals.fat += Number(variant.fat) || 0;
+        totals.fiber += Number(variant.fiber) || 0;
+        totals.sodium += Number(variant.sodium) || 0;
+      }
     });
 
     return totals;
@@ -88,8 +90,13 @@ function FoodLogCard({ foodData, userData, onLogMeal }) {
 
   const totals = calculateTotals();
 
+  // Safety check - don't render if no food data
+  if (!foodData || foodData.length === 0) {
+    return null;
+  }
+
   return (
-    <Card className="p-6 bg-linear-to-br from-green-50 to-blue-50">
+    <Card className="p-6 bg-linear-to-br from-green-50 to-blue-50 min-h-[300px]">
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -159,19 +166,19 @@ function FoodLogCard({ foodData, userData, onLogMeal }) {
           <div className="grid grid-cols-3 gap-3 text-sm">
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">
-                {totals.calories}
+                {Math.round(totals.calories || 0)}
               </p>
               <p className="text-xs text-gray-500">Calories</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">
-                {totals.protein.toFixed(1)}g
+                {(totals.protein || 0).toFixed(1)}g
               </p>
               <p className="text-xs text-gray-500">Protein</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-orange-600">
-                {totals.carbs.toFixed(1)}g
+                {(totals.carbs || 0).toFixed(1)}g
               </p>
               <p className="text-xs text-gray-500">Carbs</p>
             </div>

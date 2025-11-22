@@ -749,7 +749,6 @@
   "vanilla ice cream",
   "chocolate chip cookie",
   "cheesecake slice",
-  "apple pie",
   "lemon bar",
   "chocolate croissant",
   "tiramisu slice",
@@ -1199,5 +1198,6 @@
   "apple juice",
   "water",
   "coffee",
-  "tea"
+  "tea",
+  "chocolate"
 ]

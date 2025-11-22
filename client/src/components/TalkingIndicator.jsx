@@ -48,6 +48,30 @@ function TalkingIndicator({ state, transcript }) {
           bgColor: "bg-blue-50",
         };
 
+      case "speaking":
+        return {
+          icon: (
+            <div className="relative">
+              {/* Animated sound waves effect */}
+              <div className="flex items-center justify-center gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1 bg-green-500 rounded-full animate-wave"
+                    style={{
+                      height: "48px",
+                      animationDelay: `${i * 0.15}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          ),
+          text: "AI Speaking...",
+          color: "text-green-600",
+          bgColor: "bg-green-50",
+        };
+
       case "muted":
         return {
           icon: <MicOff className="h-12 w-12 text-gray-400" />,
@@ -70,9 +94,9 @@ function TalkingIndicator({ state, transcript }) {
 
   return (
     <div
-      className={`${bgColor} rounded-lg p-6 border-2 border-dashed border-gray-300`}
+      className={`${bgColor} rounded-lg p-6 border-2 border-dashed border-gray-300 min-h-[180px]`}
     >
-      <div className="flex flex-col items-center justify-center gap-4">
+      <div className="flex flex-col items-center justify-center gap-4 h-full">
         {/* Icon */}
         <div className="flex items-center justify-center">{icon}</div>
 
@@ -81,8 +105,8 @@ function TalkingIndicator({ state, transcript }) {
 
         {/* Live Transcript */}
         {transcript && state !== "processing" && (
-          <div className="w-full mt-2">
-            <p className="text-sm text-gray-500 text-center italic">
+          <div className="w-full mt-2 max-h-[100px] overflow-y-auto">
+            <p className="text-base text-gray-700 text-center italic leading-relaxed">
               "{transcript}"
             </p>
           </div>

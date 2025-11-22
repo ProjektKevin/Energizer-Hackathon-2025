@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getFoodById, logMeal } from '../api/foodApi';
 import { getProfile } from '../api/profileApi';
 import { MapPin, AlertTriangle } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const FoodDetail = () => {
   const { id } = useParams();
@@ -181,7 +182,7 @@ const FoodDetail = () => {
     }
   };
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  if (loading) return <LoadingSpinner message="Loading food details" />;
   if (!food) return <div className="p-4">Food not found</div>;
 
   const openGoogleMaps = () => {

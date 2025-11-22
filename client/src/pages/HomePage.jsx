@@ -3,6 +3,7 @@ import { getDailyStats, deleteMealFood } from '../api/foodApi';
 import { getProfile } from '../api/profileApi';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Coffee, Sun, Moon, Apple, Trash2 } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const HomePage = () => {
   const [stats, setStats] = useState(null);
@@ -98,7 +99,7 @@ const HomePage = () => {
   }
 };
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  if (loading) return <LoadingSpinner message="Loading your dashboard" />;
   if (!stats || !profile) return <div className="p-4">Failed to load data</div>;
 
   const { totals, goals, meals } = stats;
