@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,23 +9,19 @@ import TalkingIndicator from "./TalkingIndicator";
 import CameraPreview from "./CameraPreview";
 import ControlBar from "./ControlBar";
 import AIResponseBox from "./AIResponseBox";
-import useMicrophoneAutoVAD from "@/hooks/useMicrophoneAutoVAD";
-import useAssemblyAIStream from "@/hooks/useAssemblyAIStream";
+import useSpeechRecognition from "@/hooks/useSpeechRecognition";
 import useCameraCapture from "@/hooks/useCameraCapture";
 import useMultimodalAI from "@/hooks/useMultimodalAI";
+import useTextToSpeech from "@/hooks/useTextToSpeech";
 
 function NutritionAssistantModal({ isOpen, onClose }) {
-  const [isMuted, setIsMuted] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
 
-  // Microphone with Voice Activity Detection
-  const { isTalking, audioChunks, startListening, stopListening, isListening } =
-    useMicrophoneAutoVAD();
-
-  // AssemblyAI Streaming
-  const { transcript, isStreaming, streamAudio, finalizeTranscript } =
-    useAssemblyAIStream();
+  // Speech Recognition (browser's built-in)
+  const { transcript, finalTranscript, isListening, isMuted, start, stop, resetTranscript, setMuted } =
+    useSpeechRecognition();
 
   // Camera
   const {
@@ -40,49 +36,120 @@ function NutritionAssistantModal({ isOpen, onClose }) {
   // Multimodal AI Processing
   const { sendToAI, loading: aiLoading } = useMultimodalAI();
 
-  // Start listening when modal opens
+  // Text-to-Speech for AI voice responses
+  const { speak, stop: stopSpeaking, isSpeaking } = useTextToSpeech();
+
+  // Track if we've already processed this transcript
+  const processedTranscriptRef = useRef("");
+  const lastTranscriptRef = useRef("");
+
+  // Detect if user is talking (for UI indicator)
+  const isTalking = transcript && transcript !== lastTranscriptRef.current;
+  if (isTalking) {
+    lastTranscriptRef.current = transcript;
+  }
+
+  // Start/stop speech recognition when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      startListening();
+      console.log("🚀 Modal opened - starting speech recognition...");
+      start();
     } else {
-      stopListening();
-      if (isCameraOpen) closeCamera();
-    }
-  }, [isOpen]);
+      console.log("🔒 Modal closed - stopping speech recognition...");
+      stop();
 
-  // Stream audio when user is talking
+      if (isCameraOpen) {
+        closeCamera();
+      }
+
+      // Reset state
+      setAiResponse(null);
+      setIsProcessing(false);
+      processedTranscriptRef.current = "";
+      lastTranscriptRef.current = "";
+    }
+  }, [isOpen, start, stop]);
+
+  // Stop AI speaking when user starts talking (don't talk over each other)
   useEffect(() => {
-    if (isTalking && !isMuted && audioChunks.length > 0) {
-      streamAudio(audioChunks);
-    } else if (!isTalking && isStreaming) {
-      finalizeTranscript();
+    if (isTalking && isSpeaking) {
+      console.log("🤐 User started talking - stopping AI speech");
+      stopSpeaking();
     }
-  }, [isTalking, isMuted, audioChunks, isStreaming]);
+  }, [isTalking, isSpeaking, stopSpeaking]);
 
-  // Process transcript + image when finalized
+  // Process final transcript when user stops talking
   useEffect(() => {
-    if (transcript && !isTalking && !isProcessing) {
-      handleProcessRequest();
-    }
-  }, [transcript, isTalking]);
+    const shouldProcess =
+      finalTranscript &&
+      finalTranscript.trim().length > 0 &&
+      !isProcessing &&
+      finalTranscript !== processedTranscriptRef.current;
 
-  const handleProcessRequest = async () => {
+    if (shouldProcess) {
+      console.log("🎯 Processing final transcript:", finalTranscript);
+      processedTranscriptRef.current = finalTranscript;
+      handleProcessRequest(finalTranscript);
+    }
+  }, [finalTranscript, isProcessing]);
+
+  const handleProcessRequest = async (transcriptText) => {
     setIsProcessing(true);
     try {
+      console.log("🤖 Sending to AI...");
+      console.log("   Transcript:", transcriptText);
+      console.log("   Image:", capturedImage ? "Yes" : "No");
+      console.log("   History:", conversationHistory.length, "messages");
+
+      // Create user message object
+      const userMessage = {
+        role: "user",
+        content: transcriptText,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add to history
+      const updatedHistory = [...conversationHistory, userMessage];
+      setConversationHistory(updatedHistory);
+
+      // Send to backend with history
       const response = await sendToAI({
-        transcript,
+        transcript: transcriptText,
         image: capturedImage,
+        conversationHistory: updatedHistory,
       });
+
+      console.log("✅ AI Response received:", response);
+
+      // Add AI message to history
+      const aiMessage = {
+        role: "assistant",
+        content: response.message || "Response received",
+        timestamp: new Date().toISOString(),
+      };
+      setConversationHistory([...updatedHistory, aiMessage]);
+
       setAiResponse(response);
+
+      // Speak the AI response
+      if (response.message) {
+        console.log("🔊 AI speaking response");
+        speak(response.message);
+      }
+
+      // Reset transcript for next utterance
+      resetTranscript();
     } catch (error) {
-      console.error("Error processing AI request:", error);
+      console.error("❌ Error processing AI request:", error);
+      // Still reset transcript even on error
+      resetTranscript();
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleMuteToggle = () => {
-    setIsMuted(!isMuted);
+    setMuted(!isMuted);
   };
 
   const handleCameraToggle = () => {
@@ -100,22 +167,43 @@ function NutritionAssistantModal({ isOpen, onClose }) {
   };
 
   const handleEndCall = () => {
-    stopListening();
-    if (isCameraOpen) closeCamera();
+    console.log("📞 Ending call...");
+    stop();
+    stopSpeaking(); // Stop any ongoing speech
+
+    if (isCameraOpen) {
+      closeCamera();
+    }
+
     setAiResponse(null);
+    setConversationHistory([]);
+    processedTranscriptRef.current = "";
+    lastTranscriptRef.current = "";
+
     onClose();
   };
 
   // Determine talking indicator state
+  // NOTE: Don't show muted state in indicator - just keep showing current state
   const getTalkingState = () => {
     if (isProcessing || aiLoading) return "processing";
-    if (isTalking && !isMuted) return "recording";
-    if (isListening && !isMuted) return "idle";
-    return "muted";
+    if (isSpeaking) return "speaking"; // AI is speaking
+    if (isTalking && !isMuted) return "recording"; // User is talking (and not muted)
+    if (isListening) return "idle"; // Listening and ready
+    return "idle"; // Default to idle instead of muted
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Stop speech when dialog closes (via X button or ESC)
+          stopSpeaking();
+        }
+        onClose(open);
+      }}
+    >
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="text-2xl font-bold text-center">

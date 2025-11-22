@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProfile, updateProfile, addAllergy, deleteAllergy } from '../api/profileApi';
 import { useAuth } from '../context/AuthContext';
 import { User, ChevronDown, X, Plus, Save, LogOut } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -135,7 +136,7 @@ const ProfilePage = () => {
     return { bmi: null, category: null };
   };
 
-  if (loading) return <div className="p-4 pb-24">Loading profile...</div>;
+  if (loading) return <LoadingSpinner message="Loading your profile" />;
   if (!profile) return <div className="p-4 pb-24">Failed to load profile</div>;
 
   const { user, goals, conditions, allergies } = profile;

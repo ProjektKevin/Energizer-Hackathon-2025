@@ -262,7 +262,7 @@ function QuickRecord() {
       <div className="flex flex-col items-center w-full max-w-md">
         <button
           onClick={handleRecordClick}
-          className={`w-full bg-blue-500 text-white py-4 rounded-xl text-lg font-semibold transition-colors ${
+          className={`w-full bg-blue-400 text-white py-4 rounded-xl text-lg font-semibold transition-colors ${
             recording ? "bg-red-500 hover:bg-red-600" : "hover:bg-blue-600"
           }`}
         >

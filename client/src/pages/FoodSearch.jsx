@@ -3,6 +3,7 @@ import { getAllFoods } from '../api/foodApi';
 import FoodCard from '../components/FoodCard';
 import { getProfile } from '../api/profileApi';
 import { AlertTriangle } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const FoodSearch = () => {
   const [foods, setFoods] = useState([]);
@@ -112,7 +113,7 @@ const FoodSearch = () => {
     { id: 'high-gl', label: '🔴 High GL' },
   ];
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  if (loading) return <LoadingSpinner message="Loading foods" />;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

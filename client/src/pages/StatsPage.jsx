@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getDailyStats, deleteMealFood } from '../api/foodApi';
 import { Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const StatsPage = () => {
   const [stats, setStats] = useState(null);
@@ -83,7 +84,7 @@ const StatsPage = () => {
     }
   };
 
-  if (loading) return <div className="p-4 pb-24">Loading stats...</div>;
+  if (loading) return <LoadingSpinner message="Loading your stats" />;
   if (!stats) return <div className="p-4 pb-24">Failed to load stats</div>;
 
   const { totals, goals, conditions, meals } = stats;
