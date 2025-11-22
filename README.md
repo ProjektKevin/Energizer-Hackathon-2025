@@ -23,7 +23,6 @@ A full-stack nutrition tracking application with AI-powered voice assistance. Th
 - **ShadCN UI** - Component library with Radix UI primitives
 - **React Router DOM** - Client-side routing
 - **Axios** - HTTP client
-- **WebSocket (ws)** - Real-time communication
 - **LameJS** - Audio encoding
 
 ### Backend
@@ -32,7 +31,6 @@ A full-stack nutrition tracking application with AI-powered voice assistance. Th
 - **Supabase** - Backend-as-a-Service for database and storage
 - **OpenAI API** - AI-powered nutrition assistance
 - **AssemblyAI** - Speech-to-text conversion
-- **WebSocket (ws)** - Real-time communication
 - **JWT** - Authentication tokens
 - **Bcrypt** - Password hashing
 - **Multer** - File upload handling
